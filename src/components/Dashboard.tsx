@@ -49,7 +49,7 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
     });
   };
 
-  // Generate workout plan based on user data with randomization
+  // Generate workout plan based on user data with randomization (7 days)
   const generateWorkoutPlan = () => {
     const workouts = [];
     const frequency = parseInt(userData.workoutFrequency?.replace('_days', '') || '3');
@@ -117,10 +117,19 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
       return { ...workout, exercises: filteredExercises };
     });
     
-    return filteredWorkouts.slice(0, frequency);
+    // Generate 7 days of workouts, cycling through available workouts
+    const weekPlan = [];
+    for (let i = 0; i < 7; i++) {
+      if (i < frequency || (i >= 7 - frequency && frequency > 4)) {
+        weekPlan.push(filteredWorkouts[i % filteredWorkouts.length]);
+      } else {
+        weekPlan.push({ name: "Rest Day", duration: "0 min", exercises: ["Active Recovery", "Light Stretching"] });
+      }
+    }
+    return weekPlan;
   };
 
-  // Generate detailed meal plans with recipes
+  // Generate detailed meal plans with recipes (7 days worth)
   const generateMealPlans = () => {
     const mealPlans = {
       'weight_loss': [
@@ -218,19 +227,45 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
           ],
           prepTime: "35 minutes",
           difficulty: "Easy"
+        },
+        {
+          name: "Lentil Power Curry",
+          calories: 380,
+          protein: 22,
+          carbs: 48,
+          fats: 8,
+          ingredients: ["red lentils", "coconut milk", "spinach", "tomatoes", "curry spices", "brown rice"],
+          instructions: [
+            "Rinse red lentils and cook in vegetable broth for 15 minutes",
+            "Sauté onions, garlic, and curry spices for 2-3 minutes",
+            "Add diced tomatoes and coconut milk, simmer 10 minutes",
+            "Stir in cooked lentils and spinach until wilted",
+            "Serve over brown rice with fresh cilantro"
+          ],
+          prepTime: "30 minutes",
+          difficulty: "Easy"
         }
       ]
     };
 
     const goalMeals = mealPlans[userData.primaryGoal as keyof typeof mealPlans] || mealPlans.maintenance;
+    const mealsPerDay = parseInt(userData.preferredMeals?.toString() || '3');
     
-    // Randomize meal selection based on plan seed
-    const shuffledMeals = [...goalMeals].sort(() => {
-      const random = Math.sin(planSeed + goalMeals.length) * 10000;
-      return random - Math.floor(random);
-    });
+    // Generate enough meals for a week - cycle through available meals
+    const weekMeals = [];
+    for (let day = 0; day < 7; day++) {
+      for (let meal = 0; meal < mealsPerDay; meal++) {
+        const mealIndex = (day * mealsPerDay + meal) % goalMeals.length;
+        weekMeals.push({
+          ...goalMeals[mealIndex],
+          day: day + 1,
+          mealNumber: meal + 1,
+          mealType: meal === 0 ? 'Breakfast' : meal === 1 ? 'Lunch' : meal === mealsPerDay - 1 ? 'Dinner' : `Meal ${meal + 1}`
+        });
+      }
+    }
 
-    return shuffledMeals;
+    return weekMeals;
   };
 
   // Generate nutrition plan
@@ -267,34 +302,105 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
     };
   };
 
-  // Generate supplement recommendations
+  // Generate supplement recommendations with detailed descriptions
   const generateSupplements = () => {
     const supplements = [];
     
     // Base recommendations
-    supplements.push({ name: "Whey Protein", reason: "Support muscle protein synthesis", timing: "Post-workout" });
-    supplements.push({ name: "Multivitamin", reason: "Fill nutritional gaps", timing: "With breakfast" });
+    supplements.push({ 
+      name: "Whey Protein Isolate", 
+      reason: "Support muscle protein synthesis and recovery", 
+      timing: "Post-workout",
+      description: "High-quality complete protein containing all essential amino acids. Whey protein isolate is rapidly absorbed, making it ideal for post-workout recovery. It helps repair muscle tissue damaged during exercise and promotes lean muscle growth.",
+      dosage: "25-30g per serving",
+      benefits: ["Fast absorption", "Complete amino acid profile", "Supports muscle recovery", "Helps maintain lean muscle mass"]
+    });
+    
+    supplements.push({ 
+      name: "Multivitamin Complex", 
+      reason: "Fill nutritional gaps in your diet", 
+      timing: "With breakfast",
+      description: "A comprehensive blend of essential vitamins and minerals to support overall health and fill potential nutritional gaps in your diet. Especially important for active individuals with increased nutrient needs.",
+      dosage: "1 tablet daily",
+      benefits: ["Supports immune function", "Maintains energy levels", "Promotes overall health", "Fills dietary gaps"]
+    });
     
     // Goal-specific
     if (userData.primaryGoal === 'muscle_gain') {
-      supplements.push({ name: "Creatine Monohydrate", reason: "Increase strength and muscle mass", timing: "Post-workout" });
-      supplements.push({ name: "BCAAs", reason: "Reduce muscle breakdown", timing: "During workout" });
+      supplements.push({ 
+        name: "Creatine Monohydrate", 
+        reason: "Increase strength, power, and muscle mass", 
+        timing: "Post-workout",
+        description: "The most researched supplement for strength and muscle building. Creatine increases your muscles' phosphocreatine stores, allowing for more ATP production during high-intensity exercise, leading to improved performance and muscle growth.",
+        dosage: "5g daily",
+        benefits: ["Increases muscle strength", "Improves power output", "Enhances muscle volume", "Supports muscle growth"]
+      });
+      supplements.push({ 
+        name: "BCAAs (Leucine, Isoleucine, Valine)", 
+        reason: "Reduce muscle breakdown and support recovery", 
+        timing: "During workout",
+        description: "Branched-Chain Amino Acids are essential amino acids that your body cannot produce. They help reduce muscle protein breakdown during exercise and stimulate muscle protein synthesis, especially leucine.",
+        dosage: "10-15g during training",
+        benefits: ["Reduces muscle breakdown", "Supports muscle synthesis", "Decreases exercise fatigue", "Improves recovery"]
+      });
     }
     
     if (userData.primaryGoal === 'weight_loss') {
-      supplements.push({ name: "L-Carnitine", reason: "Support fat metabolism", timing: "Pre-workout" });
-      supplements.push({ name: "Green Tea Extract", reason: "Boost metabolism", timing: "Between meals" });
+      supplements.push({ 
+        name: "L-Carnitine", 
+        reason: "Support fat metabolism and energy production", 
+        timing: "Pre-workout",
+        description: "An amino acid derivative that plays a crucial role in energy production by transporting fatty acids into your cells' mitochondria, where they can be burned for energy. Particularly effective when combined with exercise.",
+        dosage: "2-3g before training",
+        benefits: ["Enhances fat oxidation", "Improves exercise performance", "Supports energy production", "May reduce exercise fatigue"]
+      });
+      supplements.push({ 
+        name: "Green Tea Extract (EGCG)", 
+        reason: "Boost metabolism and support fat loss", 
+        timing: "Between meals",
+        description: "Contains catechins, particularly EGCG, which can increase metabolic rate and enhance fat oxidation. Also provides antioxidant benefits and may help with appetite control.",
+        dosage: "400-500mg daily",
+        benefits: ["Increases metabolic rate", "Enhances fat burning", "Provides antioxidants", "Supports appetite control"]
+      });
     }
     
     if (userData.primaryGoal === 'endurance') {
-      supplements.push({ name: "Beta-Alanine", reason: "Improve muscular endurance", timing: "Pre-workout" });
-      supplements.push({ name: "Electrolytes", reason: "Maintain hydration", timing: "During workout" });
+      supplements.push({ 
+        name: "Beta-Alanine", 
+        reason: "Improve muscular endurance and reduce fatigue", 
+        timing: "Pre-workout",
+        description: "A non-essential amino acid that increases carnosine levels in muscles, which helps buffer acid buildup during high-intensity exercise, allowing you to train harder for longer periods.",
+        dosage: "3-5g daily",
+        benefits: ["Increases muscular endurance", "Reduces muscle fatigue", "Improves training capacity", "Enhances performance in high-intensity activities"]
+      });
+      supplements.push({ 
+        name: "Electrolyte Complex", 
+        reason: "Maintain hydration and prevent cramping", 
+        timing: "During workout",
+        description: "A balanced blend of sodium, potassium, magnesium, and calcium to replace electrolytes lost through sweat. Essential for maintaining proper muscle function and preventing dehydration during long training sessions.",
+        dosage: "As needed during exercise",
+        benefits: ["Maintains hydration", "Prevents muscle cramps", "Supports muscle function", "Enhances endurance performance"]
+      });
     }
     
     // Injury-specific
     if (userData.injuries?.some(injury => injury.includes('Joint') || injury.includes('Arthritis'))) {
-      supplements.push({ name: "Glucosamine & Chondroitin", reason: "Support joint health", timing: "With meals" });
-      supplements.push({ name: "Omega-3", reason: "Reduce inflammation", timing: "With meals" });
+      supplements.push({ 
+        name: "Glucosamine & Chondroitin Sulfate", 
+        reason: "Support joint health and cartilage maintenance", 
+        timing: "With meals",
+        description: "Natural compounds found in healthy cartilage. Glucosamine helps build and maintain cartilage, while chondroitin helps cartilage retain water and maintain its elasticity. Together, they support joint health and may reduce joint discomfort.",
+        dosage: "1500mg glucosamine + 1200mg chondroitin daily",
+        benefits: ["Supports cartilage health", "May reduce joint discomfort", "Improves joint mobility", "Supports long-term joint health"]
+      });
+      supplements.push({ 
+        name: "Omega-3 Fatty Acids (EPA/DHA)", 
+        reason: "Reduce inflammation and support joint health", 
+        timing: "With meals",
+        description: "Essential fatty acids with powerful anti-inflammatory properties. EPA and DHA help reduce systemic inflammation, which can benefit joint health, recovery, and overall wellness.",
+        dosage: "2-3g daily (combined EPA/DHA)",
+        benefits: ["Reduces inflammation", "Supports joint health", "Improves recovery", "Promotes cardiovascular health"]
+      });
     }
     
     return supplements;
@@ -338,7 +444,7 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
 
       <div className="container py-8">
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -367,19 +473,6 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Weekly Progress</p>
-                  <p className="text-2xl font-bold">{weeklyProgress}%</p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-accent" />
-              </div>
-              <Progress value={weeklyProgress} className="mt-2" />
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
                   <p className="text-sm text-muted-foreground">Goal</p>
                   <p className="text-lg font-medium capitalize">{userData.primaryGoal?.replace('_', ' ')}</p>
                 </div>
@@ -391,11 +484,12 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="workouts">Workouts</TabsTrigger>
             <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
             <TabsTrigger value="supplements">Supplements</TabsTrigger>
+            <TabsTrigger value="ai-chat">AI Coach</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -587,20 +681,31 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-4">
                 <ChefHat className="h-5 w-5 text-primary" />
-                <h3 className="text-xl font-semibold">Personalized Meal Plans</h3>
+                <h3 className="text-xl font-semibold">7-Day Meal Plan</h3>
                 <Badge variant="secondary">AI Generated</Badge>
+                <Badge variant="outline">{userData.preferredMeals} meals/day</Badge>
               </div>
               
-              <div className="grid gap-6">
-                {mealPlans.map((meal, index) => (
-                  <Card key={index} className="overflow-hidden">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="flex items-center gap-2">
-                            <Utensils className="h-5 w-5" />
-                            {meal.name}
-                          </CardTitle>
+              {/* Group meals by day */}
+              {Array.from({ length: 7 }, (_, dayIndex) => {
+                const dayMeals = mealPlans.filter(meal => meal.day === dayIndex + 1);
+                const dayName = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][dayIndex];
+                
+                return (
+                  <div key={dayIndex} className="space-y-4">
+                    <h4 className="text-lg font-semibold text-primary border-b pb-2">
+                      Day {dayIndex + 1} - {dayName}
+                    </h4>
+                    <div className="grid gap-4">
+                      {dayMeals.map((meal, index) => (
+                        <Card key={index} className="overflow-hidden">
+                          <CardHeader>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="flex items-center gap-2">
+                                  <Utensils className="h-5 w-5" />
+                                  {meal.mealType}: {meal.name}
+                                </CardTitle>
                           <CardDescription className="flex items-center gap-4 mt-2">
                             <span className="flex items-center gap-1">
                               <Timer className="h-4 w-4" />
@@ -664,9 +769,12 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
                         Start Cooking
                       </Button>
                     </CardContent>
-                  </Card>
-                ))}
-              </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Dietary Restrictions */}
@@ -687,25 +795,92 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
           </TabsContent>
 
           <TabsContent value="supplements" className="space-y-6">
-            <div className="grid gap-4">
+            <div className="grid gap-6">
               {supplements.map((supplement, index) => (
-                <Card key={index}>
+                <Card key={index} className="overflow-hidden">
                   <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2">
-                        <h3 className="font-semibold text-lg">{supplement.name}</h3>
-                        <p className="text-muted-foreground">{supplement.reason}</p>
-                        <div className="flex items-center gap-2">
-                          <Pill className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-medium">Best taken: {supplement.timing}</span>
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-semibold text-xl text-primary">{supplement.name}</h3>
+                          <p className="text-sm text-muted-foreground mt-1">{supplement.reason}</p>
+                        </div>
+                        <Button variant="outline">Add to Cart</Button>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <p className="text-sm leading-relaxed">{supplement.description}</p>
+                        
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Pill className="h-4 w-4 text-primary" />
+                              <span className="text-sm font-medium">Dosage: {supplement.dosage}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-accent" />
+                              <span className="text-sm font-medium">Best taken: {supplement.timing}</span>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h4 className="text-sm font-semibold mb-2">Key Benefits:</h4>
+                            <div className="flex flex-wrap gap-1">
+                              {supplement.benefits.map((benefit, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {benefit}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <Button variant="outline">Add to Cart</Button>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="ai-chat" className="space-y-6">
+            <Card className="h-[600px] flex flex-col">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  AI Fitness Coach
+                </CardTitle>
+                <CardDescription>Get personalized advice and answers to your fitness questions</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col">
+                <div className="flex-1 bg-muted/30 rounded-lg p-4 mb-4 overflow-y-auto">
+                  <div className="space-y-4">
+                    <div className="bg-primary/10 p-3 rounded-lg">
+                      <p className="text-sm">
+                        <strong>AI Coach:</strong> Hello! I'm your personal fitness coach. I can help you with workout modifications, nutrition advice, form corrections, and answer any fitness-related questions. What would you like to know?
+                      </p>
+                    </div>
+                    <div className="bg-accent/10 p-3 rounded-lg">
+                      <p className="text-sm">
+                        <strong>You:</strong> How can I improve my workout consistency?
+                      </p>
+                    </div>
+                    <div className="bg-primary/10 p-3 rounded-lg">
+                      <p className="text-sm">
+                        <strong>AI Coach:</strong> Great question! Based on your profile, here are some personalized tips: 1) Start with your current {userData.workoutFrequency?.replace('_', ' ')} schedule - it's realistic for your lifestyle. 2) Set specific workout times and treat them like important appointments. 3) Prepare your workout clothes the night before. 4) Track your progress to stay motivated. 5) Have backup 15-minute workouts for busy days. Would you like specific advice for any particular challenge you're facing?
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Ask your AI coach anything..." 
+                    className="flex-1 px-3 py-2 border border-input rounded-md text-sm"
+                  />
+                  <Button variant="hero">Send</Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
