@@ -108,18 +108,6 @@ const LandingPage = ({ onGetStarted }: LandingPageProps) => {
                   Already a Member?
                 </Button>
               </div>
-              
-              {/* Simplified Stats */}
-              <div className="grid grid-cols-2 gap-6 pt-8">
-                <div className="text-center p-4 bg-card border-2 border-primary/10 rounded-lg">
-                  <div className="text-3xl font-black text-primary">{stats[0].value}</div>
-                  <div className="text-sm font-semibold text-muted-foreground">{stats[0].label}</div>
-                </div>
-                <div className="text-center p-4 bg-card border-2 border-accent/10 rounded-lg">
-                  <div className="text-3xl font-black text-accent">{stats[2].value}</div>
-                  <div className="text-sm font-semibold text-muted-foreground">{stats[2].label}</div>
-                </div>
-              </div>
             </div>
             
             <div className="relative">
