@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Activity, 
   Target, 
@@ -16,7 +17,10 @@ import {
   Settings,
   User,
   CheckCircle,
-  Play
+  Play,
+  RefreshCw,
+  ChefHat,
+  Timer
 } from "lucide-react";
 import { UserData } from "./OnboardingFlow";
 
@@ -27,6 +31,8 @@ interface DashboardProps {
 
 const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
   const [activeTab, setActiveTab] = useState("overview");
+  const [planSeed, setPlanSeed] = useState(Date.now()); // For generating different plans
+  const { toast } = useToast();
 
   // Calculate BMI
   const bmi = userData.weight / Math.pow(userData.height / 100, 2);
@@ -34,7 +40,16 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
   // Weekly progress (mock data)
   const weeklyProgress = 65;
 
-  // Generate workout plan based on user data
+  // Generate new plans function
+  const generateNewPlans = () => {
+    setPlanSeed(Date.now());
+    toast({
+      title: "New Plans Generated!",
+      description: "Your workout and nutrition plans have been refreshed with new recommendations.",
+    });
+  };
+
+  // Generate workout plan based on user data with randomization
   const generateWorkoutPlan = () => {
     const workouts = [];
     const frequency = parseInt(userData.workoutFrequency?.replace('_days', '') || '3');
@@ -43,6 +58,9 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
       { name: "Full Body Strength", duration: "45 min", exercises: ["Push-ups", "Squats", "Plank", "Lunges"] },
       { name: "Cardio & Core", duration: "30 min", exercises: ["Walking", "Knee Raises", "Dead Bug", "Bird Dog"] },
       { name: "Upper Body Focus", duration: "40 min", exercises: ["Wall Push-ups", "Arm Circles", "Resistance Band Rows"] },
+      { name: "Flexibility & Mobility", duration: "35 min", exercises: ["Cat-Cow", "Child's Pose", "Hip Circles", "Arm Swings"] },
+      { name: "Beginner HIIT", duration: "25 min", exercises: ["Marching in Place", "Modified Burpees", "Step-ups", "Arm Raises"] },
+      { name: "Core Foundation", duration: "30 min", exercises: ["Modified Plank", "Knee Raises", "Side Crunches", "Glute Bridges"] },
     ];
     
     const intermediateWorkouts = [
@@ -50,6 +68,10 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
       { name: "Pull Day", duration: "60 min", exercises: ["Pull-ups", "Rows", "Lat Pulldowns", "Bicep Curls"] },
       { name: "Leg Day", duration: "75 min", exercises: ["Squats", "Deadlifts", "Lunges", "Calf Raises"] },
       { name: "Cardio HIIT", duration: "45 min", exercises: ["Burpees", "Mountain Climbers", "Jump Squats"] },
+      { name: "Upper Power", duration: "55 min", exercises: ["Incline Press", "Pull-ups", "Military Press", "Barbell Rows"] },
+      { name: "Lower Power", duration: "70 min", exercises: ["Front Squats", "Romanian Deadlifts", "Bulgarian Squats", "Hip Thrusts"] },
+      { name: "Functional Training", duration: "50 min", exercises: ["Farmer's Walk", "Turkish Get-ups", "Kettlebell Swings", "Box Jumps"] },
+      { name: "Metabolic Circuit", duration: "40 min", exercises: ["Thrusters", "Battle Ropes", "Rowing Machine", "Assault Bike"] },
     ];
     
     const advancedWorkouts = [
@@ -57,14 +79,24 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
       { name: "Olympic Lifts", duration: "75 min", exercises: ["Clean & Jerk", "Snatch", "Front Squats"] },
       { name: "HIIT Circuit", duration: "60 min", exercises: ["Box Jumps", "Battle Ropes", "Kettlebell Swings"] },
       { name: "Accessory Work", duration: "45 min", exercises: ["Isolation Exercises", "Core Work", "Mobility"] },
+      { name: "Powerlifting Focus", duration: "85 min", exercises: ["Competition Squats", "Competition Bench", "Competition Deadlift", "Pause Reps"] },
+      { name: "Athletic Performance", duration: "70 min", exercises: ["Plyometric Training", "Speed Ladders", "Medicine Ball Throws", "Sprint Intervals"] },
+      { name: "Strongman Training", duration: "80 min", exercises: ["Atlas Stones", "Tire Flips", "Sled Pulls", "Log Press"] },
+      { name: "Hypertrophy Focus", duration: "65 min", exercises: ["High Volume Squats", "Drop Sets", "Supersets", "Time Under Tension"] },
     ];
     
     let workoutPool = beginnerWorkouts;
     if (userData.fitnessLevel === 'intermediate') workoutPool = intermediateWorkouts;
     if (userData.fitnessLevel === 'advanced') workoutPool = advancedWorkouts;
     
+    // Shuffle workouts based on plan seed for variety
+    const shuffledWorkouts = [...workoutPool].sort(() => {
+      const random = Math.sin(planSeed + workoutPool.indexOf(workoutPool[0])) * 10000;
+      return random - Math.floor(random);
+    });
+    
     // Filter out exercises that might aggravate injuries
-    const filteredWorkouts = workoutPool.map(workout => {
+    const filteredWorkouts = shuffledWorkouts.map(workout => {
       let filteredExercises = [...workout.exercises];
       
       if (userData.injuries?.includes('Knee Pain')) {
@@ -86,6 +118,119 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
     });
     
     return filteredWorkouts.slice(0, frequency);
+  };
+
+  // Generate detailed meal plans with recipes
+  const generateMealPlans = () => {
+    const mealPlans = {
+      'weight_loss': [
+        {
+          name: "Grilled Chicken & Quinoa Bowl",
+          calories: 450,
+          protein: 35,
+          carbs: 40,
+          fats: 12,
+          ingredients: ["chicken breast", "quinoa", "broccoli", "bell peppers", "olive oil", "garlic"],
+          instructions: [
+            "Season chicken breast with salt, pepper, and garlic powder",
+            "Grill chicken for 6-7 minutes per side until cooked through",
+            "Cook quinoa according to package directions (1:2 ratio with water)",
+            "Steam broccoli for 4-5 minutes until tender-crisp",
+            "Sauté bell peppers in 1 tsp olive oil for 3-4 minutes",
+            "Slice chicken and serve over quinoa with vegetables",
+            "Drizzle with remaining olive oil and season to taste"
+          ],
+          prepTime: "25 minutes",
+          difficulty: "Easy"
+        },
+        {
+          name: "Salmon & Sweet Potato",
+          calories: 420,
+          protein: 32,
+          carbs: 35,
+          fats: 15,
+          ingredients: ["salmon fillet", "sweet potato", "asparagus", "lemon", "herbs"],
+          instructions: [
+            "Preheat oven to 400°F (200°C)",
+            "Pierce sweet potato and microwave for 5 minutes",
+            "Season salmon with herbs, salt, and pepper",
+            "Bake salmon and sweet potato for 15-18 minutes",
+            "Steam asparagus for 3-4 minutes",
+            "Serve with lemon wedges"
+          ],
+          prepTime: "20 minutes",
+          difficulty: "Easy"
+        }
+      ],
+      'muscle_gain': [
+        {
+          name: "Power Protein Pasta",
+          calories: 650,
+          protein: 45,
+          carbs: 65,
+          fats: 18,
+          ingredients: ["whole wheat pasta", "lean ground turkey", "marinara sauce", "mozzarella", "spinach"],
+          instructions: [
+            "Cook pasta according to package directions",
+            "Brown ground turkey in a large pan with onions",
+            "Add marinara sauce and simmer for 10 minutes",
+            "Stir in fresh spinach until wilted",
+            "Combine with cooked pasta",
+            "Top with mozzarella cheese and serve hot"
+          ],
+          prepTime: "30 minutes",
+          difficulty: "Medium"
+        },
+        {
+          name: "Steak & Rice Power Bowl",
+          calories: 720,
+          protein: 48,
+          carbs: 60,
+          fats: 22,
+          ingredients: ["sirloin steak", "brown rice", "black beans", "avocado", "peppers"],
+          instructions: [
+            "Cook brown rice (1 cup rice to 2 cups water, simmer 45 min)",
+            "Season steak with salt, pepper, and garlic",
+            "Grill steak 4-5 minutes per side for medium-rare",
+            "Heat black beans with cumin and paprika",
+            "Slice avocado and sauté peppers",
+            "Let steak rest 5 minutes, then slice",
+            "Serve over rice with beans, peppers, and avocado"
+          ],
+          prepTime: "35 minutes",
+          difficulty: "Medium"
+        }
+      ],
+      'maintenance': [
+        {
+          name: "Mediterranean Chicken",
+          calories: 520,
+          protein: 38,
+          carbs: 45,
+          fats: 20,
+          ingredients: ["chicken thighs", "couscous", "tomatoes", "olives", "feta cheese", "herbs"],
+          instructions: [
+            "Season chicken thighs with Mediterranean herbs",
+            "Cook chicken in oven at 375°F for 25-30 minutes",
+            "Prepare couscous with chicken broth for extra flavor",
+            "Dice tomatoes and mix with olives and feta",
+            "Serve chicken over couscous topped with tomato mixture"
+          ],
+          prepTime: "35 minutes",
+          difficulty: "Easy"
+        }
+      ]
+    };
+
+    const goalMeals = mealPlans[userData.primaryGoal as keyof typeof mealPlans] || mealPlans.maintenance;
+    
+    // Randomize meal selection based on plan seed
+    const shuffledMeals = [...goalMeals].sort(() => {
+      const random = Math.sin(planSeed + goalMeals.length) * 10000;
+      return random - Math.floor(random);
+    });
+
+    return shuffledMeals;
   };
 
   // Generate nutrition plan
@@ -158,6 +303,7 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
   const workoutPlan = generateWorkoutPlan();
   const nutritionPlan = generateNutritionPlan();
   const supplements = generateSupplements();
+  const mealPlans = generateMealPlans();
 
   return (
     <div className="min-h-screen bg-background">
@@ -171,6 +317,10 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
             </span>
           </div>
           <div className="flex items-center space-x-4">
+            <Button variant="outline" onClick={generateNewPlans}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Generate New Plans
+            </Button>
             <Button variant="ghost" onClick={onEditProfile}>
               <Settings className="mr-2 h-4 w-4" />
               Settings
@@ -380,7 +530,7 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
           </TabsContent>
 
           <TabsContent value="nutrition" className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Daily Targets</CardTitle>
@@ -431,6 +581,92 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+
+            {/* Detailed Meal Plans with Recipes */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-4">
+                <ChefHat className="h-5 w-5 text-primary" />
+                <h3 className="text-xl font-semibold">Personalized Meal Plans</h3>
+                <Badge variant="secondary">AI Generated</Badge>
+              </div>
+              
+              <div className="grid gap-6">
+                {mealPlans.map((meal, index) => (
+                  <Card key={index} className="overflow-hidden">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            <Utensils className="h-5 w-5" />
+                            {meal.name}
+                          </CardTitle>
+                          <CardDescription className="flex items-center gap-4 mt-2">
+                            <span className="flex items-center gap-1">
+                              <Timer className="h-4 w-4" />
+                              {meal.prepTime}
+                            </span>
+                            <Badge variant="outline">{meal.difficulty}</Badge>
+                          </CardDescription>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-primary">{meal.calories}</div>
+                          <div className="text-xs text-muted-foreground">calories</div>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Macros */}
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center p-3 bg-primary/10 rounded-lg">
+                          <div className="font-bold text-primary">{meal.protein}g</div>
+                          <div className="text-xs text-muted-foreground">Protein</div>
+                        </div>
+                        <div className="text-center p-3 bg-accent/10 rounded-lg">
+                          <div className="font-bold text-accent">{meal.carbs}g</div>
+                          <div className="text-xs text-muted-foreground">Carbs</div>
+                        </div>
+                        <div className="text-center p-3 bg-secondary/30 rounded-lg">
+                          <div className="font-bold">{meal.fats}g</div>
+                          <div className="text-xs text-muted-foreground">Fats</div>
+                        </div>
+                      </div>
+
+                      {/* Ingredients */}
+                      <div>
+                        <h4 className="font-semibold mb-3">Ingredients:</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {meal.ingredients.map((ingredient, idx) => (
+                            <Badge key={idx} variant="outline" className="justify-start">
+                              {ingredient}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Cooking Instructions */}
+                      <div>
+                        <h4 className="font-semibold mb-3">Cooking Instructions:</h4>
+                        <div className="space-y-3">
+                          {meal.instructions.map((step, idx) => (
+                            <div key={idx} className="flex gap-3 p-3 bg-muted/30 rounded-lg">
+                              <div className="flex-shrink-0 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium">
+                                {idx + 1}
+                              </div>
+                              <p className="text-sm leading-relaxed">{step}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <Button className="w-full" variant="hero">
+                        <Play className="mr-2 h-4 w-4" />
+                        Start Cooking
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
 
             {/* Dietary Restrictions */}
