@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,9 +20,15 @@ import {
   Play,
   RefreshCw,
   ChefHat,
-  Timer
+  Timer,
+  Brain,
+  Zap
 } from "lucide-react";
 import { UserData } from "./OnboardingFlow";
+import { SmartWorkoutCard, AIRecommendationsCard } from "./SmartWorkoutCard";
+import { ProgressPrediction } from "./ProgressPrediction";
+import { EnhancedAICoach } from "./EnhancedAICoach";
+import { aiService, WorkoutFeedback, AIRecommendation } from "@/services/aiService";
 
 interface DashboardProps {
   userData: UserData;
@@ -32,7 +38,28 @@ interface DashboardProps {
 const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
   const [activeTab, setActiveTab] = useState("overview");
   const [planSeed, setPlanSeed] = useState(Date.now()); // For generating different plans
+  const [aiRecommendations, setAiRecommendations] = useState<AIRecommendation[]>([]);
   const { toast } = useToast();
+
+  // Initialize AI service and load data
+  useEffect(() => {
+    aiService.loadStoredData();
+    updateAIRecommendations();
+  }, [userData]);
+
+  const updateAIRecommendations = () => {
+    const recommendations = aiService.generateRecommendations(userData);
+    setAiRecommendations(recommendations);
+  };
+
+  // Handle workout feedback
+  const handleWorkoutFeedback = (feedback: WorkoutFeedback) => {
+    updateAIRecommendations();
+    toast({
+      title: "Workout Feedback Recorded!",
+      description: "Your feedback helps improve future workout recommendations.",
+    });
+  };
 
   // Calculate BMI
   const bmi = userData.weight / Math.pow(userData.height / 100, 2);
@@ -42,56 +69,68 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
 
   // Generate new plans function
   const generateNewPlans = () => {
+    // Apply AI difficulty adjustment
+    const difficultyAdjustment = aiService.getWorkoutDifficultyAdjustment(userData);
     setPlanSeed(Date.now());
+    updateAIRecommendations();
+    
     toast({
       title: "New Plans Generated!",
-      description: "Your workout and nutrition plans have been refreshed with new recommendations.",
+      description: `Your plans have been refreshed with AI optimizations ${difficultyAdjustment !== 1.0 ? '(difficulty adjusted)' : ''}.`,
     });
   };
 
-  // Generate workout plan based on user data with randomization (7 days)
+  // Generate workout plan based on user data with AI optimization
   const generateWorkoutPlan = () => {
     const workouts = [];
     const frequency = parseInt(userData.workoutFrequency?.replace('_days', '') || '3');
+    const difficultyAdjustment = aiService.getWorkoutDifficultyAdjustment(userData);
     
     const beginnerWorkouts = [
-      { name: "Full Body Strength", duration: "45 min", exercises: ["Push-ups", "Squats", "Plank", "Lunges"] },
-      { name: "Cardio & Core", duration: "30 min", exercises: ["Walking", "Knee Raises", "Dead Bug", "Bird Dog"] },
-      { name: "Upper Body Focus", duration: "40 min", exercises: ["Wall Push-ups", "Arm Circles", "Resistance Band Rows"] },
-      { name: "Flexibility & Mobility", duration: "35 min", exercises: ["Cat-Cow", "Child's Pose", "Hip Circles", "Arm Swings"] },
-      { name: "Beginner HIIT", duration: "25 min", exercises: ["Marching in Place", "Modified Burpees", "Step-ups", "Arm Raises"] },
-      { name: "Core Foundation", duration: "30 min", exercises: ["Modified Plank", "Knee Raises", "Side Crunches", "Glute Bridges"] },
+      { name: "Full Body Strength", duration: "45 min", exercises: ["Push-ups", "Squats", "Plank", "Lunges"], difficulty: 3 },
+      { name: "Cardio & Core", duration: "30 min", exercises: ["Walking", "Knee Raises", "Dead Bug", "Bird Dog"], difficulty: 2 },
+      { name: "Upper Body Focus", duration: "40 min", exercises: ["Wall Push-ups", "Arm Circles", "Resistance Band Rows"], difficulty: 3 },
+      { name: "Flexibility & Mobility", duration: "35 min", exercises: ["Cat-Cow", "Child's Pose", "Hip Circles", "Arm Swings"], difficulty: 2 },
+      { name: "Beginner HIIT", duration: "25 min", exercises: ["Marching in Place", "Modified Burpees", "Step-ups", "Arm Raises"], difficulty: 4 },
+      { name: "Core Foundation", duration: "30 min", exercises: ["Modified Plank", "Knee Raises", "Side Crunches", "Glute Bridges"], difficulty: 3 },
     ];
     
     const intermediateWorkouts = [
-      { name: "Push Day", duration: "60 min", exercises: ["Bench Press", "Shoulder Press", "Dips", "Push-ups"] },
-      { name: "Pull Day", duration: "60 min", exercises: ["Pull-ups", "Rows", "Lat Pulldowns", "Bicep Curls"] },
-      { name: "Leg Day", duration: "75 min", exercises: ["Squats", "Deadlifts", "Lunges", "Calf Raises"] },
-      { name: "Cardio HIIT", duration: "45 min", exercises: ["Burpees", "Mountain Climbers", "Jump Squats"] },
-      { name: "Upper Power", duration: "55 min", exercises: ["Incline Press", "Pull-ups", "Military Press", "Barbell Rows"] },
-      { name: "Lower Power", duration: "70 min", exercises: ["Front Squats", "Romanian Deadlifts", "Bulgarian Squats", "Hip Thrusts"] },
-      { name: "Functional Training", duration: "50 min", exercises: ["Farmer's Walk", "Turkish Get-ups", "Kettlebell Swings", "Box Jumps"] },
-      { name: "Metabolic Circuit", duration: "40 min", exercises: ["Thrusters", "Battle Ropes", "Rowing Machine", "Assault Bike"] },
+      { name: "Push Day", duration: "60 min", exercises: ["Bench Press", "Shoulder Press", "Dips", "Push-ups"], difficulty: 6 },
+      { name: "Pull Day", duration: "60 min", exercises: ["Pull-ups", "Rows", "Lat Pulldowns", "Bicep Curls"], difficulty: 6 },
+      { name: "Leg Day", duration: "75 min", exercises: ["Squats", "Deadlifts", "Lunges", "Calf Raises"], difficulty: 7 },
+      { name: "Cardio HIIT", duration: "45 min", exercises: ["Burpees", "Mountain Climbers", "Jump Squats"], difficulty: 5 },
+      { name: "Upper Power", duration: "55 min", exercises: ["Incline Press", "Pull-ups", "Military Press", "Barbell Rows"], difficulty: 6 },
+      { name: "Lower Power", duration: "70 min", exercises: ["Front Squats", "Romanian Deadlifts", "Bulgarian Squats", "Hip Thrusts"], difficulty: 7 },
+      { name: "Functional Training", duration: "50 min", exercises: ["Farmer's Walk", "Turkish Get-ups", "Kettlebell Swings", "Box Jumps"], difficulty: 5 },
+      { name: "Metabolic Circuit", duration: "40 min", exercises: ["Thrusters", "Battle Ropes", "Rowing Machine", "Assault Bike"], difficulty: 6 },
     ];
     
     const advancedWorkouts = [
-      { name: "Heavy Compound", duration: "90 min", exercises: ["Deadlifts", "Squats", "Bench Press", "Rows"] },
-      { name: "Olympic Lifts", duration: "75 min", exercises: ["Clean & Jerk", "Snatch", "Front Squats"] },
-      { name: "HIIT Circuit", duration: "60 min", exercises: ["Box Jumps", "Battle Ropes", "Kettlebell Swings"] },
-      { name: "Accessory Work", duration: "45 min", exercises: ["Isolation Exercises", "Core Work", "Mobility"] },
-      { name: "Powerlifting Focus", duration: "85 min", exercises: ["Competition Squats", "Competition Bench", "Competition Deadlift", "Pause Reps"] },
-      { name: "Athletic Performance", duration: "70 min", exercises: ["Plyometric Training", "Speed Ladders", "Medicine Ball Throws", "Sprint Intervals"] },
-      { name: "Strongman Training", duration: "80 min", exercises: ["Atlas Stones", "Tire Flips", "Sled Pulls", "Log Press"] },
-      { name: "Hypertrophy Focus", duration: "65 min", exercises: ["High Volume Squats", "Drop Sets", "Supersets", "Time Under Tension"] },
+      { name: "Heavy Compound", duration: "90 min", exercises: ["Deadlifts", "Squats", "Bench Press", "Rows"], difficulty: 9 },
+      { name: "Olympic Lifts", duration: "75 min", exercises: ["Clean & Jerk", "Snatch", "Front Squats"], difficulty: 10 },
+      { name: "HIIT Circuit", duration: "60 min", exercises: ["Box Jumps", "Battle Ropes", "Kettlebell Swings"], difficulty: 8 },
+      { name: "Accessory Work", duration: "45 min", exercises: ["Isolation Exercises", "Core Work", "Mobility"], difficulty: 6 },
+      { name: "Powerlifting Focus", duration: "85 min", exercises: ["Competition Squats", "Competition Bench", "Competition Deadlift", "Pause Reps"], difficulty: 9 },
+      { name: "Athletic Performance", duration: "70 min", exercises: ["Plyometric Training", "Speed Ladders", "Medicine Ball Throws", "Sprint Intervals"], difficulty: 8 },
+      { name: "Strongman Training", duration: "80 min", exercises: ["Atlas Stones", "Tire Flips", "Sled Pulls", "Log Press"], difficulty: 10 },
+      { name: "Hypertrophy Focus", duration: "65 min", exercises: ["High Volume Squats", "Drop Sets", "Supersets", "Time Under Tension"], difficulty: 7 },
     ];
     
     let workoutPool = beginnerWorkouts;
     if (userData.fitnessLevel === 'intermediate') workoutPool = intermediateWorkouts;
     if (userData.fitnessLevel === 'advanced') workoutPool = advancedWorkouts;
     
+    // Apply AI difficulty adjustment
+    const adjustedWorkouts = workoutPool.map(workout => ({
+      ...workout,
+      difficulty: Math.max(1, Math.min(10, Math.round(workout.difficulty * difficultyAdjustment))),
+      aiGenerated: difficultyAdjustment !== 1.0
+    }));
+    
     // Shuffle workouts based on plan seed for variety
-    const shuffledWorkouts = [...workoutPool].sort(() => {
-      const random = Math.sin(planSeed + workoutPool.indexOf(workoutPool[0])) * 10000;
+    const shuffledWorkouts = [...adjustedWorkouts].sort(() => {
+      const random = Math.sin(planSeed + adjustedWorkouts.indexOf(adjustedWorkouts[0])) * 10000;
       return random - Math.floor(random);
     });
     
@@ -129,7 +168,7 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
     return weekPlan;
   };
 
-  // Generate detailed meal plans with recipes (7 days worth)
+  // Enhanced meal plan generation with AI preferences
   const generateMealPlans = () => {
     const mealPlans = {
       'weight_loss': [
@@ -150,7 +189,8 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
             "Drizzle with remaining olive oil and season to taste"
           ],
           prepTime: "25 minutes",
-          difficulty: "Easy"
+          difficulty: "Easy",
+          tags: ["high-protein", "low-carb", "gluten-free"]
         },
         {
           name: "Salmon & Sweet Potato",
@@ -168,7 +208,8 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
             "Serve with lemon wedges"
           ],
           prepTime: "20 minutes",
-          difficulty: "Easy"
+          difficulty: "Easy",
+          tags: ["omega-3", "anti-inflammatory", "heart-healthy"]
         }
       ],
       'muscle_gain': [
@@ -484,12 +525,13 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="workouts">Workouts</TabsTrigger>
             <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
             <TabsTrigger value="supplements">Supplements</TabsTrigger>
-            <TabsTrigger value="ai-chat">AI Coach</TabsTrigger>
+            <TabsTrigger value="progress">AI Progress</TabsTrigger>
+            <TabsTrigger value="ai-coach">AI Coach</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -557,6 +599,12 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
               </Card>
             </div>
 
+            {/* AI Recommendations */}
+            <AIRecommendationsCard 
+              recommendations={aiRecommendations} 
+              userData={userData} 
+            />
+
             {/* Weekly Schedule */}
             <Card>
               <CardHeader>
@@ -592,33 +640,12 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
           <TabsContent value="workouts" className="space-y-6">
             <div className="grid gap-6">
               {workoutPlan.map((workout, index) => (
-                <Card key={index}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>{workout.name}</CardTitle>
-                        <CardDescription className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          {workout.duration}
-                        </CardDescription>
-                      </div>
-                      <Button variant="hero">
-                        <Play className="mr-2 h-4 w-4" />
-                        Start Workout
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {workout.exercises.map((exercise, exerciseIndex) => (
-                        <div key={exerciseIndex} className="p-3 bg-secondary/30 rounded-lg">
-                          <p className="font-medium text-sm">{exercise}</p>
-                          <p className="text-xs text-muted-foreground mt-1">3 sets × 12 reps</p>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                <SmartWorkoutCard
+                  key={index}
+                  workout={workout}
+                  userData={userData}
+                  onWorkoutComplete={handleWorkoutFeedback}
+                />
               ))}
             </div>
           </TabsContent>
@@ -842,45 +869,15 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
             </div>
           </TabsContent>
 
-          <TabsContent value="ai-chat" className="space-y-6">
-            <Card className="h-[600px] flex flex-col">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  AI Fitness Coach
-                </CardTitle>
-                <CardDescription>Get personalized advice and answers to your fitness questions</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
-                <div className="flex-1 bg-muted/30 rounded-lg p-4 mb-4 overflow-y-auto">
-                  <div className="space-y-4">
-                    <div className="bg-primary/10 p-3 rounded-lg">
-                      <p className="text-sm">
-                        <strong>AI Coach:</strong> Hello! I'm your personal fitness coach. I can help you with workout modifications, nutrition advice, form corrections, and answer any fitness-related questions. What would you like to know?
-                      </p>
-                    </div>
-                    <div className="bg-accent/10 p-3 rounded-lg">
-                      <p className="text-sm">
-                        <strong>You:</strong> How can I improve my workout consistency?
-                      </p>
-                    </div>
-                    <div className="bg-primary/10 p-3 rounded-lg">
-                      <p className="text-sm">
-                        <strong>AI Coach:</strong> Great question! Based on your profile, here are some personalized tips: 1) Start with your current {userData.workoutFrequency?.replace('_', ' ')} schedule - it's realistic for your lifestyle. 2) Set specific workout times and treat them like important appointments. 3) Prepare your workout clothes the night before. 4) Track your progress to stay motivated. 5) Have backup 15-minute workouts for busy days. Would you like specific advice for any particular challenge you're facing?
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="Ask your AI coach anything..." 
-                    className="flex-1 px-3 py-2 border border-input rounded-md text-sm"
-                  />
-                  <Button variant="hero">Send</Button>
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="progress" className="space-y-6">
+            <ProgressPrediction userData={userData} />
+          </TabsContent>
+
+          <TabsContent value="ai-coach" className="space-y-6">
+            <EnhancedAICoach 
+              userData={userData} 
+              recommendations={aiRecommendations} 
+            />
           </TabsContent>
         </Tabs>
       </div>
