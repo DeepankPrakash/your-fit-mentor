@@ -3,6 +3,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
+console.log('🔑 OpenAI API Key available:', !!openAIApiKey);
+console.log('🔑 API Key length:', openAIApiKey?.length || 0);
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -19,6 +22,16 @@ serve(async (req) => {
 
     console.log('Received message:', message);
     console.log('User data:', userData);
+
+    // Check if OpenAI API key is available
+    if (!openAIApiKey) {
+      console.error('❌ OpenAI API key not found in environment variables');
+      return new Response(JSON.stringify({ 
+        response: "I'm sorry, the AI service isn't fully configured yet. Please make sure the OpenAI API key is set in the project settings." 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Create a personalized system prompt based on user data
     const systemPrompt = `You are an AI fitness coach helping a user with their fitness journey. Here's what you know about them:

@@ -222,8 +222,14 @@ class AIService {
 
   // Enhanced AI Coach responses using OpenAI
   async generateContextualResponse(userMessage: string, userData: UserData): Promise<string> {
+    console.log('🤖 AI Service: Starting generateContextualResponse');
+    console.log('🤖 User message:', userMessage);
+    console.log('🤖 User data:', userData);
+
     try {
       const { supabase } = await import("@/integrations/supabase/client");
+      
+      console.log('🤖 Calling Supabase function...');
       
       const { data, error } = await supabase.functions.invoke('ai-chat', {
         body: {
@@ -231,6 +237,9 @@ class AIService {
           userData: userData
         }
       });
+
+      console.log('🤖 Supabase function response:', data);
+      console.log('🤖 Supabase function error:', error);
 
       if (error) {
         console.error('Error calling AI chat function:', error);
