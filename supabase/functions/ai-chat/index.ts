@@ -1,0 +1,73 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { message, userData } = await req.json();
+
+    console.log('Received message:', message);
+    console.log('User data:', userData);
+
+    // Create a personalized system prompt based on user data
+    const systemPrompt = `You are an AI fitness coach helping a user with their fitness journey. Here's what you know about them:
+    
+- Age: ${userData.age} years old
+- Fitness Level: ${userData.fitnessLevel}
+- Primary Goal: ${userData.primaryGoal?.replace('_', ' ')}
+- Workout Frequency: ${userData.workoutFrequency?.replace('_', ' ')} per week
+- Preferred Meals: ${userData.preferredMeals} meals per day
+- Weight: ${userData.weight}kg
+- Height: ${userData.height}cm
+${userData.injuries?.length ? `- Injuries to consider: ${userData.injuries.join(', ')}` : ''}
+
+Be encouraging, personalized, and specific in your advice. Keep responses conversational and supportive. Always consider their fitness level and goals when giving advice. Use emojis occasionally to keep it friendly.`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: message }
+        ],
+        temperature: 0.7,
+        max_tokens: 300,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const aiResponse = data.choices[0].message.content;
+
+    console.log('AI response:', aiResponse);
+
+    return new Response(JSON.stringify({ response: aiResponse }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error in ai-chat function:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});

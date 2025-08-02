@@ -143,20 +143,33 @@ export const EnhancedAICoach = ({ userData, recommendations }: EnhancedAICoachPr
     setInputMessage('');
     setIsTyping(true);
 
-    // Simulate AI thinking time
-    setTimeout(() => {
-      const aiResponse = aiService.generateContextualResponse(content, userData);
-      
-      const aiMessage: ChatMessage = {
-        id: 'ai-' + Date.now(),
-        type: 'ai',
-        content: aiResponse,
-        timestamp: new Date(),
-        category: userMessage.category
-      };
+    // Generate AI response
+    setTimeout(async () => {
+      try {
+        const aiResponse = await aiService.generateContextualResponse(content, userData);
+        
+        const aiMessage: ChatMessage = {
+          id: 'ai-' + Date.now(),
+          type: 'ai',
+          content: aiResponse,
+          timestamp: new Date(),
+          category: userMessage.category
+        };
 
-      setMessages(prev => [...prev, aiMessage]);
-      setIsTyping(false);
+        setMessages(prev => [...prev, aiMessage]);
+      } catch (error) {
+        console.error('Error generating AI response:', error);
+        const errorMessage: ChatMessage = {
+          id: 'ai-' + Date.now(),
+          type: 'ai',
+          content: "I'm sorry, I'm having trouble responding right now. Please try again in a moment.",
+          timestamp: new Date(),
+          category: 'general'
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      } finally {
+        setIsTyping(false);
+      }
     }, 1000 + Math.random() * 1500); // Random delay between 1-2.5 seconds
   };
 

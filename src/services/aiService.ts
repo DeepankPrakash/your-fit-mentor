@@ -220,44 +220,48 @@ class AIService {
     });
   }
 
-  // Enhanced AI Coach responses
-  generateContextualResponse(userMessage: string, userData: UserData): string {
-    const lowerMessage = userMessage.toLowerCase();
-    const recommendations = this.generateRecommendations(userData);
-    
-    // Context-aware responses based on user data and current state
-    if (lowerMessage.includes('motivation') || lowerMessage.includes('tired') || lowerMessage.includes('unmotivated')) {
-      const progressMotivation = this.progressHistory.length > 0 
-        ? `You've been tracking your progress for ${this.progressHistory.length} entries - that's dedication! ` 
-        : '';
+  // Enhanced AI Coach responses using OpenAI
+  async generateContextualResponse(userMessage: string, userData: UserData): Promise<string> {
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
       
-      return `${progressMotivation}Remember why you started your ${userData.primaryGoal?.replace('_', ' ')} journey. Based on your ${userData.fitnessLevel} level and ${userData.workoutFrequency?.replace('_', ' ')} schedule, you're building sustainable habits. Small consistent actions lead to big results! 💪`;
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: {
+          message: userMessage,
+          userData: userData
+        }
+      });
+
+      if (error) {
+        console.error('Error calling AI chat function:', error);
+        return this.getFallbackResponse(userMessage, userData);
+      }
+
+      return data.response || this.getFallbackResponse(userMessage, userData);
+    } catch (error) {
+      console.error('Error in generateContextualResponse:', error);
+      return this.getFallbackResponse(userMessage, userData);
+    }
+  }
+
+  // Fallback responses when OpenAI is not available
+  private getFallbackResponse(userMessage: string, userData: UserData): string {
+    const lowerMessage = userMessage.toLowerCase();
+    
+    if (lowerMessage.includes('motivation') || lowerMessage.includes('tired') || lowerMessage.includes('unmotivated')) {
+      return `Remember why you started your ${userData.primaryGoal?.replace('_', ' ')} journey. Based on your ${userData.fitnessLevel} level, you're building sustainable habits. Small consistent actions lead to big results! 💪`;
     }
 
     if (lowerMessage.includes('diet') || lowerMessage.includes('nutrition') || lowerMessage.includes('meal')) {
-      const mealPrefs = this.getMealPreferences();
-      const prefText = mealPrefs.length > 0 
-        ? `I've noticed you enjoy ${mealPrefs.slice(0, 2).join(' and ')}, so I'll keep that in mind. ` 
-        : '';
-      
-      return `${prefText}For your ${userData.primaryGoal?.replace('_', ' ')} goal, focus on ${userData.primaryGoal === 'weight_loss' ? 'a slight calorie deficit with high protein' : userData.primaryGoal === 'muscle_gain' ? 'adequate calories and protein timing around workouts' : 'balanced nutrition to maintain your current physique'}. Your ${userData.preferredMeals} meals per day approach works well with your lifestyle!`;
+      return `For your ${userData.primaryGoal?.replace('_', ' ')} goal, focus on ${userData.primaryGoal === 'weight_loss' ? 'a slight calorie deficit with high protein' : userData.primaryGoal === 'muscle_gain' ? 'adequate calories and protein timing around workouts' : 'balanced nutrition to maintain your current physique'}.`;
     }
 
     if (lowerMessage.includes('workout') || lowerMessage.includes('exercise') || lowerMessage.includes('training')) {
-      const difficultyAdj = this.getWorkoutDifficultyAdjustment(userData);
-      const adjText = difficultyAdj > 1 ? 'You might be ready to increase intensity! ' : 
-                     difficultyAdj < 1 ? 'Let\'s focus on proper form and gradual progression. ' : '';
-      
-      return `${adjText}Your ${userData.fitnessLevel} level and ${userData.workoutFrequency?.replace('_', ' ')} frequency is a great foundation. ${userData.injuries?.length ? 'I\'m keeping your injury considerations in mind for all recommendations. ' : ''}Focus on consistency over perfection!`;
+      return `Your ${userData.fitnessLevel} level and ${userData.workoutFrequency?.replace('_', ' ')} frequency is a great foundation. Focus on consistency over perfection!`;
     }
 
-    if (lowerMessage.includes('progress') || lowerMessage.includes('results')) {
-      const prediction = this.predictProgress(userData, 4);
-      return `Based on your current approach, you could expect ${Math.abs(prediction.weightChange).toFixed(1)}kg ${prediction.weightChange < 0 ? 'weight loss' : 'gain'} over the next month. Your ${userData.fitnessLevel} level suggests ${prediction.strengthGain > 0.2 ? 'significant' : 'steady'} strength improvements. Remember, sustainable progress takes time - you're building lifelong habits! 📈`;
-    }
-
-    // Default contextual response
-    return `As your AI coach, I'm here to help with your ${userData.primaryGoal?.replace('_', ' ')} journey! Based on your profile (${userData.age} years, ${userData.fitnessLevel} level), I can provide personalized advice about workouts, nutrition, or motivation. What specific area would you like to focus on today?`;
+    // Default response
+    return `As your AI coach, I'm here to help with your ${userData.primaryGoal?.replace('_', ' ')} journey! How can I assist you today?`;
   }
 
   // Utility methods
