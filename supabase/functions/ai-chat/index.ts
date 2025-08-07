@@ -54,18 +54,22 @@ Be encouraging, personalized, and specific in your advice. Keep responses conver
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: message }
         ],
-        temperature: 0.7,
-        max_tokens: 300,
+        temperature: 0.8,
+        max_tokens: 500,
+        presence_penalty: 0.6,
+        frequency_penalty: 0.3,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorData = await response.text();
+      console.error('OpenAI API error details:', errorData);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorData}`);
     }
 
     const data = await response.json();
