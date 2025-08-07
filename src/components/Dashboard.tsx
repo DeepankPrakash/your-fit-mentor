@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { UserData } from "./OnboardingFlow";
 import { SmartWorkoutCard, AIRecommendationsCard } from "./SmartWorkoutCard";
-import { ProgressPrediction } from "./ProgressPrediction";
+
 import { EnhancedAICoach } from "./EnhancedAICoach";
 import { aiService, WorkoutFeedback, AIRecommendation } from "@/services/aiService";
 
@@ -525,12 +525,11 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="workouts">Workouts</TabsTrigger>
             <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
             <TabsTrigger value="supplements">Supplements</TabsTrigger>
-            <TabsTrigger value="progress">AI Progress</TabsTrigger>
             <TabsTrigger value="ai-coach">AI Coach</TabsTrigger>
           </TabsList>
 
@@ -869,9 +868,6 @@ const Dashboard = ({ userData, onEditProfile }: DashboardProps) => {
             </div>
           </TabsContent>
 
-          <TabsContent value="progress" className="space-y-6">
-            <ProgressPrediction userData={userData} />
-          </TabsContent>
 
           <TabsContent value="ai-coach" className="space-y-6">
             <EnhancedAICoach 
